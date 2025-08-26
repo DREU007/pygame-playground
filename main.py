@@ -1,10 +1,12 @@
 
 from random import randrange
+from collections import deque
 import pygame as pg
 from settings import Resolution
 
 
 COIN_SIZE = 20
+STEP = 300
 
 class Game:
     def __init__(self):
@@ -15,11 +17,13 @@ class Game:
 
         self.score = 0
         self.dt = 0
-        self.player = pg.Vector2(
-            self.screen.get_width() / 2,
-            self.screen.get_height() / 2
+        self.player = deque()
+        self.player.append(
+            pg.Vector2(
+                self.screen.get_width() / 2,
+                self.screen.get_height() / 2
+            )
         )
-
         self.set_random_coin()
 
     def set_random_coin(self):
@@ -28,20 +32,44 @@ class Game:
         rh = randrange(0, self.screen.get_height() - COIN_SIZE) 
         self.coin = pg.Rect(rw, rh, COIN_SIZE, COIN_SIZE)
 
+    def draw_player(self):
+        for element in self.player:
+            pg.draw.circle(self.screen, "red", element, 10)
+
+
+    @staticmethod
+    def object_move(obj, attr, step, direction):
+        new_value = getattr(obj, attr) + step * direction
+        setattr(obj, attr, new_value)
+
+    def player_move(self, head_x, head_y, step=300):
+        head = self.player[0]
+        new_head_x = head.x + head_x * step * self.dt
+        new_head_y = head.y + head_y * step * self.dt
+        self.player.appendleft(pg.Vector2(new_head_x, new_head_y))
+
     def render(self):
         pg.draw.rect(self.screen, "yellow", self.coin)
-        pg.draw.circle(self.screen, "red", self.player, 10)
+        self.draw_player()
+
+        head_x, head_y = 0, 0 
+        move = False
 
         keys=pg.key.get_pressed()
-        if keys[pg.K_w]: self.player.y -= 300 * self.dt
-        if keys[pg.K_s]: self.player.y += 300 * self.dt
-        if keys[pg.K_a]: self.player.x -= 300 * self.dt
-        if keys[pg.K_d]: self.player.x += 300 * self.dt
+        if keys[pg.K_w]: move = True; head_y = -1 
+        if keys[pg.K_s]: move = True; head_y = 1 
+        if keys[pg.K_a]: move = True; head_x = -1
+        if keys[pg.K_d]: move = True; head_x = 1
 
-        is_collision = self.coin.collidepoint(self.player)
-        if is_collision:
-            self.score += 1
-            self.set_random_coin()
+        if move:
+            self.player_move(head_x, head_y)
+
+            is_collision = self.coin.collidepoint(self.player[0])
+            if is_collision:
+                self.score += 1
+                self.set_random_coin()
+            else:
+                self.player.pop()
 
     def main(self):
 
