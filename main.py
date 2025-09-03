@@ -5,8 +5,8 @@ import pygame as pg
 from settings import Resolution
 
 
-COIN_SIZE = 20
-STEP = 300
+COIN_SIZE = 32 
+STEP = 32 
 
 class Game:
     def __init__(self):
@@ -17,13 +17,9 @@ class Game:
 
         self.score = 0
         self.dt = 0
-        self.player = deque()
-        self.player.append(
-            pg.Vector2(
-                self.screen.get_width() / 2,
-                self.screen.get_height() / 2
-            )
-        )
+        self.player = pg.Vector2(16, 16)
+        self.selected = None
+        self.is_selected = False
         self.set_random_coin()
 
     def set_random_coin(self):
@@ -32,9 +28,11 @@ class Game:
         rh = randrange(0, self.screen.get_height() - COIN_SIZE) 
         self.coin = pg.Rect(rw, rh, COIN_SIZE, COIN_SIZE)
 
-    def draw_player(self):
-        for element in self.player:
-            pg.draw.circle(self.screen, "red", element, 10)
+    def select(self):
+        self.is_selected = not self.is_selected
+        x = self.player.x // STEP * STEP
+        y = self.player.y // STEP * STEP
+        self.selected = pg.Rect(x, y, STEP, STEP)
 
 
     @staticmethod
@@ -42,34 +40,31 @@ class Game:
         new_value = getattr(obj, attr) + step * direction
         setattr(obj, attr, new_value)
 
-    def player_move(self, head_x, head_y, step=300):
-        head = self.player[0]
-        new_head_x = head.x + head_x * step * self.dt
-        new_head_y = head.y + head_y * step * self.dt
-        self.player.appendleft(pg.Vector2(new_head_x, new_head_y))
+    def player_move(self, move_x, move_y, step=STEP):
+        self.player.x += move_x * step
+        self.player.y += move_y * step
 
     def render(self):
         pg.draw.rect(self.screen, "yellow", self.coin)
-        self.draw_player()
+        if self.is_selected:
+            pg.draw.rect(self.screen, "grey", self.selected)
+        pg.draw.circle(self.screen, "red", self.player, 16)
+        
 
-        head_x, head_y = 0, 0 
-        move = False
+        move_x = 0
+        move_y = 0
+        keys=pg.key.get_just_pressed()
+        if keys[pg.K_w]: move_y = -1
+        if keys[pg.K_s]: move_y = 1
+        if keys[pg.K_a]: move_x = -1
+        if keys[pg.K_d]: move_x = 1
+        if keys[pg.K_SPACE]: self.select() 
+        self.player_move(move_x, move_y)
 
-        keys=pg.key.get_pressed()
-        if keys[pg.K_w]: move = True; head_y = -1 
-        if keys[pg.K_s]: move = True; head_y = 1 
-        if keys[pg.K_a]: move = True; head_x = -1
-        if keys[pg.K_d]: move = True; head_x = 1
-
-        if move:
-            self.player_move(head_x, head_y)
-
-            is_collision = self.coin.collidepoint(self.player[0])
-            if is_collision:
-                self.score += 1
-                self.set_random_coin()
-            else:
-                self.player.pop()
+        is_collision = self.coin.collidepoint(self.player)
+        if is_collision:
+            self.score += 1
+            self.set_random_coin()
 
     def main(self):
 
